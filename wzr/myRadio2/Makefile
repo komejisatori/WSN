@@ -1,0 +1,2 @@
+COMPONENT=MyradioAppC
+include $(MAKERULES)
