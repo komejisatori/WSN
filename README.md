@@ -1,10 +1,10 @@
 # WSN
 computer network homework
 ## How to run gui.java
-cd fcg
-cd gui
-javac gui.java
-java gui
+>cd fcg<br>
+ cd gui<br>
+ javac gui.java<br>
+ java gui
 
 below are some commands that provides
 + "start": begin to collect message to 'result.txt'
