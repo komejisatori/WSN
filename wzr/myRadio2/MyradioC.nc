@@ -91,14 +91,14 @@ implementation{
             if(len == sizeof(my_radio_msg)){
                 my_radio_msg* node_pkt = (my_radio_msg*)(call Packet.getPayload(&msg, sizeof(my_radio_msg)));
                 //node_pkt->sequenceNumber = sequenceNumber;
-                
+                my_radio_msg* this_pkt = (my_radio_msg*)(call Packet.getPayload(&sendMessage[receive_point], sizeof(my_radio_msg)));
                 //sendMessage[receive_point] = *node_pkt;
-                sendMessage[receive_point].nodeId = node_pkt->nodeId;
-                sendMessage[receive_point].collectTime = node_pkt->collectTime;
-                sendMessage[receive_point].sequenceNumber = sequenceNumber;
+                this_pkt->nodeId = node_pkt->nodeId;
+                this_pkt->collectTime = node_pkt->collectTime;
+                this_pkt->sequenceNumber = sequenceNumber;
                 sequenceNumber ++;
-                sendMessage[receive_point].type = node_pkt->type;
-                sendMessage[receive_point].newTimerPeriod = node_pkt->newTimerPeriod;
+                this_pkt->type = node_pkt->type;
+                this_pkt->newTimerPeriod = node_pkt->newTimerPeriod;
                 //sendQueue[receive_point] = node_pkt;
                 receive_point ++;
                 if(receive_point >= 12){

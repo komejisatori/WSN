@@ -11,7 +11,7 @@ typedef nx_struct my_radio_msg{
 }my_radio_msg;
 
 enum{
-    AM_RADIO_TO_RADIO_MSG = 0x89,
+    AM_RADIO_TO_RADIO_MSG = 0x92,
     AM_RADIO_TO_STATION_MSG = 0x90,
 };
 
