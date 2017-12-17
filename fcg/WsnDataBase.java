@@ -37,6 +37,8 @@ public class WsnDataBase implements MessageListener {
   public void messageReceived(int to, Message message) {
     WsnDataBaseMsg msg = (WsnDataBaseMsg)message;
     System.out.println("Received packet sequence number " + msg.get_sequenceNumber());
+    System.out.println("Received packet nodeId " + msg.get_nodeId());
+    System.out.println("Received packet counter " + msg.get_counter());
   }
   
   private static void usage() {

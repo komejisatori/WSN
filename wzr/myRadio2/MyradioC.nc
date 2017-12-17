@@ -7,7 +7,8 @@ module MyradioC{
     uses interface Timer<TMilli> as Timer;
     uses interface Packet;
     uses interface AMPacket;
-    uses interface AMSend;
+    uses interface AMSend as PackSend;
+    uses interface AMSend as ACKSend;
     uses interface Receive;
     uses interface SplitControl as AMControl;
 }
@@ -21,6 +22,10 @@ implementation{
     uint16_t frequence = 1000;
     message_t sendMessage[12];
     message_t* ONE_NOK sendQueue[12];
+    message_t receive_pkt;
+    message_t* ONE_NOK receive_pkt_pointer;
+    message_t pkt;
+    message_t* ONE_NOK pkt_pointer;
     uint16_t receive_point = 0;
     uint16_t send_point = 0;
 
@@ -29,6 +34,8 @@ implementation{
         for(i = 0 ; i < 12; i ++){
             sendQueue[i] = &sendMessage[i];
         }
+        pkt_pointer = &pkt;
+        receive_pkt_pointer = &receive_pkt;
         call AMControl.start();
     }
 
@@ -41,6 +48,17 @@ implementation{
     event void AMControl.stopDone(error_t err){
 
     }
+
+    task void ackSendTask(){
+        atomic{
+            if(call ACKSend.send(AM_BROADCAST_ADDR,pkt_pointer,sizeof(my_radio_msg)) == SUCCESS){
+                call Leds.led2Toggle();
+            }
+            else{
+                post ackSendTask();
+            }
+        }
+    }
     
     task void radioSendTask(){
         atomic{
@@ -48,7 +66,7 @@ implementation{
                 busy = FALSE;
                 return;
             }
-            if(call AMSend.send(AM_BROADCAST_ADDR,sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
+            if(call PackSend.send(AM_BROADCAST_ADDR,sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
                 call Leds.led0Toggle();
             }
             else{
@@ -65,7 +83,7 @@ implementation{
                 return;
             }
             send_pkt->nodeId = TOS_NODE_ID;
-            send_pkt->data = counter;
+            send_pkt->counter = counter;
             send_pkt->collectTime = counter;
             send_pkt->type = 0;
             send_pkt->sequenceNumber = sequenceNumber;
@@ -89,11 +107,13 @@ implementation{
     event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
         atomic {
             if(len == sizeof(my_radio_msg)){
-                my_radio_msg* node_pkt = (my_radio_msg*)(call Packet.getPayload(&msg, sizeof(my_radio_msg)));
+                my_radio_msg* ack_pkt = (my_radio_msg*)(call Packet.getPayload(&pkt, sizeof(my_radio_msg)));
+                my_radio_msg* node_pkt = (my_radio_msg*)(call Packet.getPayload(msg, sizeof(my_radio_msg)));
                 //node_pkt->sequenceNumber = sequenceNumber;
                 my_radio_msg* this_pkt = (my_radio_msg*)(call Packet.getPayload(&sendMessage[receive_point], sizeof(my_radio_msg)));
                 //sendMessage[receive_point] = *node_pkt;
                 this_pkt->nodeId = node_pkt->nodeId;
+                this_pkt->counter = node_pkt->counter;
                 this_pkt->collectTime = node_pkt->collectTime;
                 this_pkt->sequenceNumber = sequenceNumber;
                 sequenceNumber ++;
@@ -107,13 +127,31 @@ implementation{
                 if(receive_point == send_point){
                     full = TRUE;
                 }
+                
+                if(ack_pkt == NULL){
+                    return;
+                }
+                ack_pkt->nodeId = node_pkt->nodeId;
+                ack_pkt->type = 1;
+                ack_pkt->ack = 1;
+                ack_pkt->newTimerPeriod = 0;
                 call Leds.led1Toggle();
-            }
+                post ackSendTask();
         }
         return msg;
+        }
     }
 
-    event void AMSend.sendDone(message_t* msg, error_t err){
+    event void ACKSend.sendDone(message_t* msg, error_t err){
+        if(err == SUCCESS){
+            
+        }
+        else{
+            post ackSendTask();
+        }
+    }
+
+    event void PackSend.sendDone(message_t* msg, error_t err){
         if(err == SUCCESS){
             atomic{
                 if(sendQueue[send_point] == msg){
@@ -122,7 +160,6 @@ implementation{
                         send_point = 0;
                     }
                     full = FALSE;
-                    call Leds.led2Toggle();
                 }
                 post radioSendTask();
             }
