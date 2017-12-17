@@ -1,0 +1,3 @@
+COMPONENT=MySenseAppC
+
+include $(MAKERULES)
