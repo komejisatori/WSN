@@ -10,6 +10,9 @@ module MyradioC{
     uses interface AMSend;
     uses interface Receive;
     uses interface SplitControl as AMControl;
+    uses interface Read<uint16_t> as ReadTemperature;
+    uses interface Read<uint16_t> as ReadHumidity;
+    uses interface Read<uint16_t> as ReadIllumination;
 }
 
 implementation{
@@ -23,6 +26,7 @@ implementation{
     message_t* ONE_NOK sendQueue[12];
     uint16_t receive_point = 0;
     uint16_t send_point = 0;
+    uint16_t read_check = 0; //if 3 every sensor complete
 
     event void Boot.booted(){
         uint8_t i;
@@ -59,30 +63,90 @@ implementation{
 
     event void Timer.fired(){
         if(!full){
-            
             my_radio_msg* send_pkt = (my_radio_msg*)(call Packet.getPayload(&sendMessage[receive_point], sizeof(my_radio_msg)));
             counter ++;
             if(send_pkt == NULL){
                 return;
             }
             send_pkt->nodeId = TOS_NODE_ID;
-            send_pkt->counter = counter;
+            //send_pkt->counter = counter;
+            call ReadTemperature.read();
+            call ReadHumidity.read();
+            call ReadIllumination.read();
             send_pkt->collectTime = counter;
             send_pkt->type = 0;
             send_pkt->sequenceNumber = sequenceNumber;
             sequenceNumber ++;
             send_pkt->newTimerPeriod = 0;
-            receive_point ++;
-            if(receive_point >= 12){
-                receive_point = 0;
-            }
-            if(receive_point == send_point){
-                full = TRUE;
-            }
         }
         if(!busy){
             post radioSendTask();
             busy = TRUE;
+        }
+    }
+
+    event void ReadTemperature.readDone(error_t result, uint16_t data){
+        if (result == SUCCESS) {
+            my_radio_msg* send_pkt = (my_radio_msg*)(call Packet.getPayload(&sendMessage[receive_point], sizeof(my_radio_msg)));
+            if (send_pkt == NULL) {
+                return;
+            }
+            send_pkt->temperature = -40.1 + 0.01 * data;
+            read_check += 1;
+            if(read_check == 3){
+                read_check = 0;
+                receive_point ++;
+                if(receive_point >= 12){
+                    receive_point = 0;
+                }
+                if(receive_point == send_point){
+                    full = TRUE;
+                }
+            }
+            //call Leds.led0Toggle();
+        }
+    }
+
+    event void ReadHumidity.readDone(error_t result, uint16_t data){
+        if (result == SUCCESS) {
+            my_radio_msg* send_pkt = (my_radio_msg*)(call Packet.getPayload(&sendMessage[receive_point], sizeof(my_radio_msg)));
+            if (send_pkt == NULL) {
+                return;
+            }
+            send_pkt->humidity = -4 + 4 * data / 100 + (-28 / 1000 / 10000) * (data * data);
+            send_pkt->humidity += (send_pkt->temperature - 25) * (1 / 100 + 8 * data / 100 / 1000);
+            read_check += 1;
+            if(read_check == 3){
+                read_check = 0;
+                receive_point ++;
+                if(receive_point >= 12){
+                    receive_point = 0;
+                }
+                if(receive_point == send_point){
+                    full = TRUE;
+                }
+            }
+        }
+    }
+
+    event void ReadIllumination.readDone(error_t result, uint16_t data){
+        if(result == SUCCESS){
+            my_radio_msg* send_pkt = (my_radio_msg*)(call Packet.getPayload(&sendMessage[receive_point], sizeof(my_radio_msg)));
+            if (send_pkt == NULL) {
+                return;
+            }
+            send_pkt->illumination = data;
+            read_check += 1;
+            if(read_check == 3){
+                read_check = 0;
+                receive_point ++;
+                if(receive_point >= 12){
+                    receive_point = 0;
+                }
+                if(receive_point == send_point){
+                    full = TRUE;
+                }
+            }
         }
     }
 

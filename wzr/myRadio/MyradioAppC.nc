@@ -12,7 +12,9 @@ implementation{
     components ActiveMessageC;
     components new AMSenderC(AM_RADIO_TO_RADIO_MSG);
     components new AMReceiverC(AM_RADIO_TO_RADIO_MSG);
-    
+    components new SensirionSht11C() as Sensor1;
+    components new HamamatsuS1087ParC() as Sensor2;
+
     
     App.Boot -> MainC;
     App.Leds -> LedsC;
@@ -22,4 +24,7 @@ implementation{
     App.AMControl -> ActiveMessageC;
     App.AMSend -> AMSenderC;
     App.Receive->AMReceiverC;
+    App.ReadTemperature -> Sensor1.Temperature;
+    App.ReadHumidity -> Sensor1.Humidity;
+    App.ReadIllumination ->Sensor2;
 }

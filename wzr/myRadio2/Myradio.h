@@ -3,7 +3,9 @@
 
 typedef nx_struct my_radio_msg{
     nx_uint16_t nodeId;
-    nx_uint16_t counter;
+    nx_uint16_t temperature;
+    nx_uint16_t humidity;
+    nx_uint16_t illumination;
     nx_uint16_t collectTime;
     nx_uint16_t sequenceNumber;
     nx_uint16_t type;
