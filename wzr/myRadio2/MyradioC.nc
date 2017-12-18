@@ -11,6 +11,7 @@ module MyradioC{
     uses interface AMSend as PackSend;
     uses interface AMSend as ACKSend;
     uses interface Receive;
+    uses interface Receive as ACKReceiver;
     uses interface SplitControl as AMControl;
     uses interface Read<uint16_t> as ReadTemperature;
     uses interface Read<uint16_t> as ReadHumidity;
@@ -74,6 +75,7 @@ implementation{
             }
             if(call PackSend.send(AM_BROADCAST_ADDR,sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
                 call Leds.led0Toggle();
+                busy = FALSE;
             }
             else{
                 post radioSendTask();
@@ -201,7 +203,7 @@ implementation{
                 }
                 
                 if(ack_pkt == NULL){
-                    return;
+                    return msg;
                 }
                 ack_pkt->nodeId = node_pkt->nodeId;
                 ack_pkt->type = 1;
@@ -210,6 +212,25 @@ implementation{
                 call Leds.led1Toggle();
                 post ackSendTask();
         }
+        return msg;
+        }
+    }
+
+    event message_t* ACKReceiver.receive(message_t* msg, void* payload, uint8_t len){
+        atomic{
+            if(len == sizeof(my_radio_msg)){
+                my_radio_msg* node_pkt = (my_radio_msg*)(call Packet.getPayload(msg, sizeof(my_radio_msg)));
+                if(node_pkt->nodeId == TOS_NODE_ID){
+                    if(node_pkt->type == 1 && node_pkt->ack == 1){
+                        send_point ++;
+                        if(send_point >= 12){
+                            send_point = 0;
+                        }
+                        full = FALSE;
+                        call Leds.led1Toggle();
+                    }
+                }
+            }
         return msg;
         }
     }
@@ -224,20 +245,6 @@ implementation{
     }
 
     event void PackSend.sendDone(message_t* msg, error_t err){
-        if(err == SUCCESS){
-            atomic{
-                if(sendQueue[send_point] == msg){
-                    send_point ++;
-                    if(send_point >= 12){
-                        send_point = 0;
-                    }
-                    full = FALSE;
-                }
-                post radioSendTask();
-            }
-        }
-        else{
-            
-        }
+
     }
 }
