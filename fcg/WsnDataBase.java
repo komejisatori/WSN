@@ -1,13 +1,50 @@
+import java.awt.GridLayout;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;  
+import javax.swing.JLabel;  
+import javax.swing.JPanel;
+import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;  
+import javax.swing.border.EmptyBorder;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.TextArea;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import java.io.File;  
+import java.io.FileInputStream;  
+import java.io.FileNotFoundException;  
+import java.io.FileOutputStream;  
+import java.io.IOException;  
+import java.io.InputStreamReader;  
+import java.util.Scanner;
+
 import java.io.IOException;
 
 import net.tinyos.message.*;
 import net.tinyos.packet.*;
 import net.tinyos.util.*;
 
-public class WsnDataBase implements MessageListener {
+public class WsnDataBase extends JFrame implements MessageListener, ActionListener {
 
   private MoteIF moteIF;
   
+  JPanel contentPane;
+  JTextArea textAreaOutput;
+  JButton beginButton;
+  JButton endButton;
+  JButton clearButton;
+  boolean receiveFLag = true;
+
+  File file;
+  public FileOutputStream out;
+  int systemStatus = 0;
+
   public WsnDataBase(MoteIF moteIF) {
     this.moteIF = moteIF;
     this.moteIF.registerListener(new WsnDataBaseMsg(), this);
@@ -20,12 +57,12 @@ public class WsnDataBase implements MessageListener {
       return;
     try {
       while (true) {
-	System.out.println("Sending packet " + counter);
-	payload.set_counter(counter);
-	moteIF.send(0, payload);
-	counter++;
-	try {Thread.sleep(1000);}
-	catch (InterruptedException exception) {}
+        System.out.println("Sending packet " + counter);
+        moteIF.send(0, payload);
+        counter++;
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException exception) {}
       }
     }
     catch (IOException exception) {
@@ -36,17 +73,153 @@ public class WsnDataBase implements MessageListener {
 
   public void messageReceived(int to, Message message) {
     WsnDataBaseMsg msg = (WsnDataBaseMsg)message;
-    System.out.println("Received packet sequence number " + msg.get_sequenceNumber());
-    System.out.println("Received packet nodeId " + msg.get_nodeId());
-    System.out.println("Received packet counter " + msg.get_counter());
+    String str = "";
+    str += Integer.toString(msg.get_nodeId()) + ' ';
+    str += Integer.toString(msg.get_temperature()) + ' ';
+    str += Integer.toString(msg.get_humidity()) + ' ';
+    str += Integer.toString(msg.get_illumination()) + ' ';
+    str += Integer.toString(msg.get_collectTime()) + ' ';
+    str += Integer.toString(msg.get_sequenceNumber()) + '\n';
+    if (this.receiveFLag == true) {
+      byte bt[];
+      bt = str.getBytes();
+      try {
+        out.write(bt, 0, bt.length);
+      } catch (IOException e) {  
+        // TODO Auto-generated catch block  
+        e.printStackTrace();  
+      } 
+    }
+
+    if (this.systemStatus == 1) {
+      addStr(str);
+    }
   }
   
   private static void usage() {
     System.err.println("usage: TestSerial [-comm <source>]");
   }
   
+  public void initGui () {
+    contentPane = (JPanel)this.getContentPane();
+    this.setTitle("gui");  
+    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  
+    this.setBounds(100, 100, 800, 600);   
+    contentPane.setBorder(new EmptyBorder(5,5,5,5));  
+    contentPane.setLayout(new BorderLayout());  
+    JPanel pane1=new JPanel();  
+    contentPane.add(pane1, BorderLayout.NORTH);  
+    JPanel pane2=new JPanel();  
+    contentPane.add(pane2, BorderLayout.CENTER);  
+    beginButton = new JButton("开始接收");
+    endButton = new JButton("结束接收");
+    clearButton = new JButton("清空");
+    beginButton.setSize(20, 10);
+    endButton.setSize(20, 10);
+    clearButton.setSize(20, 10);
+    beginButton.addActionListener(this);
+    endButton.addActionListener(this);
+    clearButton.addActionListener(this);
+    pane1.add(beginButton);
+    pane1.add(endButton);  
+    pane1.add(clearButton);
+
+
+    textAreaOutput = new JTextArea("", 30, 100);
+    textAreaOutput.setSelectedTextColor(Color.RED);
+    textAreaOutput.setLineWrap(true);
+    textAreaOutput.setWrapStyleWord(true);
+    textAreaOutput.setEditable(false);
+    JScrollPane scrollPane = new JScrollPane(textAreaOutput);
+    scrollPane.setBounds(0, 0, 10, 40);
+    scrollPane.setVerticalScrollBarPolicy( JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+    pane2.add(scrollPane);
+    this.setVisible(true);  
+    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+  }
+
+  public void addStr (String str) {
+    this.textAreaOutput.append(str);
+  }
+
+  public void clearStr () {
+    this.textAreaOutput.setText("");
+  }
+
+  public void beginCollect () {
+    if (this.systemStatus == 1) {
+        return;
+    }
+    this.systemStatus = 1;
+    this.addStr("begin\n");
+  }
+
+  public void endCollect () {
+    if (this.systemStatus == 0) {
+      return;
+    }
+    this.systemStatus = 0;
+    this.addStr("end\n");
+  }
+
+  public void actionPerformed(ActionEvent e) {
+    if (clearButton == e.getSource()) {
+      this.clearStr();
+    }
+    else if (beginButton == e.getSource()) {
+      this.beginCollect();
+    }
+    else if (endButton == e.getSource()) {
+      this.endCollect();
+    }
+  }
+
+  public void commandLoop () {
+    Scanner in = new Scanner(System.in);
+    String command = null;
+    do {
+        System.out.println("Please Enter Command :");
+        command = in.nextLine();
+        if (command.equals("start")) {
+          file = new File("result.txt");
+          try {  
+            file.createNewFile(); // 创建文件  
+          } catch (IOException e) {  
+            e.printStackTrace();  
+          }
+          try {  
+            out = new FileOutputStream(file); 
+          } catch (FileNotFoundException e) {  
+            e.printStackTrace();  
+          } 
+          this.receiveFLag = true;
+        }
+        else if (command.equals("stop")) {
+          this.receiveFLag = false;
+          try {
+            this.out.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        }
+        else if (command.equals("exit")) {
+          this.receiveFLag = false;
+          try {
+            this.out.close();
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+          break;
+        }
+        else if (command.equals("gui")) {
+          this.initGui();
+        }
+    } while (true);
+  }
+
   public static void main(String[] args) throws Exception {
-    String source = null;
+    String source = "serial@/dev/ttyUSB0:telos";
+    /*
     if (args.length == 2) {
       if (!args[0].equals("-comm")) {
 	usage();
@@ -58,19 +231,13 @@ public class WsnDataBase implements MessageListener {
       usage();
       System.exit(1);
     }
-    
+    */
     PhoenixSource phoenix;
-    
-    if (source == null) {
-      phoenix = BuildSource.makePhoenix(PrintStreamMessenger.err);
-    }
-    else {
-      phoenix = BuildSource.makePhoenix(source, PrintStreamMessenger.err);
-    }
+    phoenix = BuildSource.makePhoenix(source, PrintStreamMessenger.err);
 
     MoteIF mif = new MoteIF(phoenix);
     WsnDataBase serial = new WsnDataBase(mif);
-    serial.sendPackets();
+
   }
 
 

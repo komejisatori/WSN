@@ -2,3 +2,4 @@
 build/
 *.class
 WsnDataBaseMsg.java
+result.txt
