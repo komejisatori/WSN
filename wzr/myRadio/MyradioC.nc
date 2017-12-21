@@ -13,6 +13,7 @@ module MyradioC{
     uses interface Read<uint16_t> as ReadTemperature;
     uses interface Read<uint16_t> as ReadHumidity;
     uses interface Read<uint16_t> as ReadIllumination;
+    uses interface PacketAcknowledgements as PacketAck;
 }
 
 implementation{
@@ -51,8 +52,8 @@ implementation{
             busy = FALSE;
             return;
         }
-        if(call AMSend.send(AM_BROADCAST_ADDR,sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
-            call Leds.led0Toggle();
+        call PacketAck.requestAck(sendQueue[send_point]); // require for ack
+        if(call AMSend.send(TOS_NODE_ID - 1,sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
             busy = FALSE;
         }
         else{
@@ -61,10 +62,14 @@ implementation{
         }
     }
 
+    task void timerRestart () {
+        call Timer.startPeriodic(frequence);
+    }
+
     event void Timer.fired(){
         if(!full){
             my_radio_msg* send_pkt = (my_radio_msg*)(call Packet.getPayload(&sendMessage[receive_point], sizeof(my_radio_msg)));
-            counter ++;
+            counter += frequence;
             if(send_pkt == NULL){
                 return;
             }
@@ -157,18 +162,28 @@ implementation{
         atomic{
             if(len == sizeof(my_radio_msg)){
                 my_radio_msg* node_pkt = (my_radio_msg*)(call Packet.getPayload(msg, sizeof(my_radio_msg)));
-                if(node_pkt->nodeId == TOS_NODE_ID){
-                    if(node_pkt->type == 1 && node_pkt->ack == 1){
-                        send_point ++;
-                        if(send_point >= 12){
-                            send_point = 0;
-                        }
-                        full = FALSE;
-                        call Leds.led1Toggle();
-                    }
+                if (node_pkt->type == 1) {
+                    frequence = node_pkt->newTimerPeriod;
+                    post timerRestart();
+                    call Leds.led12Toggle();
                 }
             }
         return msg;
+    }
+
+    event void AMSend.sendDone(message_t* msg, error_t err){
+        if (call PacketAck.wasAcked(msg) && error == SUCCESS) {
+            call Leds.led0Toggle();
+            send_point ++;
+            if(send_point >= 12){
+                send_point = 0;
+                full = FALSE;
+            }
+        } 
+        else {
+            call Leds.led2Toggle();
         }
+
+        post radioSendTask();
     }
 }

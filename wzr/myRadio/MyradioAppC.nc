@@ -10,8 +10,8 @@ implementation{
     components MyradioC as App;
     components new TimerMilliC() as Timer;
     components ActiveMessageC;
-    components new AMSenderC(AM_RADIO_TO_RADIO_MSG);
-    components new AMReceiverC(AM_RADIO_TO_RADIO_MSG);
+    components new AMSenderC(AM_RADIO_MSG);
+    components new AMReceiverC(AM_RADIO_MSG);
     components new SensirionSht11C() as Sensor1;
     components new HamamatsuS1087ParC() as Sensor2;
 
@@ -27,4 +27,5 @@ implementation{
     App.ReadTemperature -> Sensor1.Temperature;
     App.ReadHumidity -> Sensor1.Humidity;
     App.ReadIllumination ->Sensor2;
+    App.PacketAck -> AMSenderC
 }
