@@ -50,20 +50,12 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
     this.moteIF.registerListener(new WsnDataBaseMsg(), this);
   }
 
-  public void sendPackets() {
-    int counter = 0;
+  public void sendPackets(int newPeriod) {
     WsnDataBaseMsg payload = new WsnDataBaseMsg();
-    if(counter == 0)
-      return;
     try {
-      while (true) {
-        System.out.println("Sending packet " + counter);
-        moteIF.send(0, payload);
-        counter++;
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException exception) {}
-      }
+      payload.set_type(1);
+      payload.set_newTimerPeriod(newPeriod);
+      moteIF.send(0, payload);
     }
     catch (IOException exception) {
       System.err.println("Exception thrown when sending packets. Exiting.");
@@ -111,9 +103,9 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
     contentPane.add(pane1, BorderLayout.NORTH);  
     JPanel pane2=new JPanel();  
     contentPane.add(pane2, BorderLayout.CENTER);  
-    beginButton = new JButton("å¼€å§‹æ¥æ”¶");
-    endButton = new JButton("ç»“æŸæ¥æ”¶");
-    clearButton = new JButton("æ¸…ç©º");
+    beginButton = new JButton("¿ªÊ¼½ÓÊÕ");
+    endButton = new JButton("½áÊø½ÓÊÕ");
+    clearButton = new JButton("Çå¿Õ");
     beginButton.setSize(20, 10);
     endButton.setSize(20, 10);
     clearButton.setSize(20, 10);
@@ -183,7 +175,7 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
         if (command.equals("start")) {
           file = new File("result.txt");
           try {  
-            file.createNewFile(); // åˆ›å»ºæ–‡ä»¶  
+            file.createNewFile(); // ´´½¨ÎÄ¼ş  
           } catch (IOException e) {  
             e.printStackTrace();  
           }
