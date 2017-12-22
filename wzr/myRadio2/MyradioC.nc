@@ -210,7 +210,7 @@ implementation{
         }
     }
 
-    event void PackSend.sendDone(message_t* msg, error_t err){
+    event void PackSend.sendDone(message_t* msg, error_t error){
         if (call PacketAck.wasAcked(msg) && error == SUCCESS) {
             call Leds.led0Toggle();
             send_point ++;

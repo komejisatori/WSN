@@ -155,9 +155,6 @@ implementation{
         }
     }
 
-    event void AMSend.sendDone(message_t* msg, error_t err){
-    }
-
     event message_t* Receive.receive(message_t* msg,void* payload, uint8_t len){
         atomic{
             if(len == sizeof(my_radio_msg)){

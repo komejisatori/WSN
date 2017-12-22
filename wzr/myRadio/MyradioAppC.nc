@@ -27,5 +27,5 @@ implementation{
     App.ReadTemperature -> Sensor1.Temperature;
     App.ReadHumidity -> Sensor1.Humidity;
     App.ReadIllumination ->Sensor2;
-    App.PacketAck -> AMSenderC
+    App.PacketAck -> AMSenderC;
 }
