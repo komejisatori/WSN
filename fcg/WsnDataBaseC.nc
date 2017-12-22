@@ -153,8 +153,8 @@ implementation {
       call RadioPacket.clear(msg);
       call RadioAMPacket.setSource(msg, source);
 
-      if (call RadioSend.send(addr, msg, len) == SUCCESS) {
-        call Leds.led1Toggle();
+      if (call RadioSend.send(TOS_NODE_ID + 1, msg, len) == SUCCESS) {
+        call Leds.led2Toggle();
         radioLocked = TRUE;
       }
       else {

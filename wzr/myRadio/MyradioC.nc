@@ -63,6 +63,7 @@ implementation{
     }
 
     task void timerRestart () {
+        call Timer.stop();
         call Timer.startPeriodic(frequence);
     }
 
@@ -162,13 +163,14 @@ implementation{
                 if (node_pkt->type == 1) {
                     frequence = node_pkt->newTimerPeriod;
                     post timerRestart();
-                    call Leds.led12Toggle();
+                    call Leds.led2Toggle();
                 }
             }
         return msg;
+        }
     }
 
-    event void AMSend.sendDone(message_t* msg, error_t err){
+    event void AMSend.sendDone(message_t* msg, error_t error){
         if (call PacketAck.wasAcked(msg) && error == SUCCESS) {
             call Leds.led0Toggle();
             send_point ++;
