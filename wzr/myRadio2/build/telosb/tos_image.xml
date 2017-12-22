@@ -1,13 +1,13 @@
 <tos_image>
   <ident>
-    <hostname>ubuntu</hostname>
-    <uidhash>5DB3BB5CL</uidhash>
-    <deluge_support>no</deluge_support>
-    <username>root</username>
-    <userhash>A3473BA6L</userhash>
-    <timestamp>5A378F2BL</timestamp>
-    <appname>MyradioAppC</appname>
     <platform>telosb</platform>
+    <timestamp>5A3C9AA9L</timestamp>
+    <username>fcg</username>
+    <deluge_support>no</deluge_support>
+    <userhash>DBFDFE42L</userhash>
+    <hostname>fcg-Inspiron-55</hostname>
+    <appname>MyradioAppC</appname>
+    <uidhash>8BF01532L</uidhash>
   </ident>
   <image format="ihex">
 :104000005542200135D0085A8245DA153140003931
