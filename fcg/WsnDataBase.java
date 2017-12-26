@@ -39,31 +39,26 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
   JButton beginButton;
   JButton endButton;
   JButton clearButton;
+  JButton newTimerButton;
   boolean receiveFLag = true;
-
+  JTextField textField1; 
   File file;
   public FileOutputStream out;
   int systemStatus = 0;
-
+  int count1 = 0;
+  int count2 = 0;
   public WsnDataBase(MoteIF moteIF) {
     this.moteIF = moteIF;
     this.moteIF.registerListener(new WsnDataBaseMsg(), this);
+    this.commandLoop();
   }
 
-  public void sendPackets() {
-    int counter = 0;
+  public void sendPackets(int newTimePeriod) {
     WsnDataBaseMsg payload = new WsnDataBaseMsg();
-    if(counter == 0)
-      return;
     try {
-      while (true) {
-        System.out.println("Sending packet " + counter);
-        moteIF.send(0, payload);
-        counter++;
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException exception) {}
-      }
+      payload.set_type(1);
+      payload.set_newTimerPeriod(newTimePeriod);
+      moteIF.send(0, payload);
     }
     catch (IOException exception) {
       System.err.println("Exception thrown when sending packets. Exiting.");
@@ -78,8 +73,26 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
     str += Integer.toString(msg.get_temperature()) + ' ';
     str += Integer.toString(msg.get_humidity()) + ' ';
     str += Integer.toString(msg.get_illumination()) + ' ';
-    str += Integer.toString(msg.get_collectTime()) + ' ';
-    str += Integer.toString(msg.get_sequenceNumber()) + '\n';
+    str += Integer.toString((int)msg.get_collectTime()) + ' ';
+    str += Integer.toString((int)msg.get_sequenceNumber()) + '\n';
+    if(this.systemStatus == 1){
+      if(msg.get_nodeId() == 2 && this.count1 != msg.get_sequenceNumber() - 1 && this.count1 != msg.get_sequenceNumber()){
+        this.addStr("node2 warning\n");
+      }
+      if(msg.get_nodeId() == 3 && this.count2 != msg.get_sequenceNumber() - 1 && this.count2 != msg.get_sequenceNumber()){
+        this.addStr("node3 warning\n");
+      }
+    }
+    if(msg.get_nodeId() == 2)
+      this.count1 = msg.get_sequenceNumber();
+    if(msg.get_nodeId() == 3)
+      this.count2 = msg.get_sequenceNumber();
+    //if((this.systemStatus == 1 && (msg.get_sequenceNumber() - count != 1)))
+    //{
+    //  this.addStr("warning\n");
+    //}
+    //  count = msg.get_sequenceNumber();
+    /*
     if (this.receiveFLag == true) {
       byte bt[];
       bt = str.getBytes();
@@ -89,7 +102,7 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
         // TODO Auto-generated catch block  
         e.printStackTrace();  
       } 
-    }
+    }*/
 
     if (this.systemStatus == 1) {
       addStr(str);
@@ -114,16 +127,23 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
     beginButton = new JButton("开始接收");
     endButton = new JButton("结束接收");
     clearButton = new JButton("清空");
+    newTimerButton = new JButton("调整计时器");
+    textField1 = new JTextField();
     beginButton.setSize(20, 10);
     endButton.setSize(20, 10);
     clearButton.setSize(20, 10);
+    newTimerButton.setSize(20, 10);
+    textField1.setSize(20,10);
+    textField1.setColumns(10);
     beginButton.addActionListener(this);
     endButton.addActionListener(this);
     clearButton.addActionListener(this);
+    newTimerButton.addActionListener(this);
     pane1.add(beginButton);
     pane1.add(endButton);  
     pane1.add(clearButton);
-
+    pane1.add(newTimerButton);
+    pane1.add(textField1);
 
     textAreaOutput = new JTextArea("", 30, 100);
     textAreaOutput.setSelectedTextColor(Color.RED);
@@ -162,6 +182,12 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
     this.addStr("end\n");
   }
 
+  public void setTimePeriod() {
+    String str = textField1.getText();
+    int newTime = Integer.parseInt(str);
+    sendPackets(newTime);
+  }
+
   public void actionPerformed(ActionEvent e) {
     if (clearButton == e.getSource()) {
       this.clearStr();
@@ -171,6 +197,9 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
     }
     else if (endButton == e.getSource()) {
       this.endCollect();
+    }
+    else if (newTimerButton == e.getSource()) {
+      this.setTimePeriod();
     }
   }
 

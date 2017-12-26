@@ -13,6 +13,7 @@ module MyradioC{
     uses interface Read<uint16_t> as ReadTemperature;
     uses interface Read<uint16_t> as ReadHumidity;
     uses interface Read<uint16_t> as ReadIllumination;
+    uses interface PacketAcknowledgements as PacketAck;
 }
 
 implementation{
@@ -28,6 +29,7 @@ implementation{
     uint16_t send_point = 0;
     uint16_t read_check = 0; //if 3 every sensor complete
 
+    uint16_t last_sequency = 0;
     event void Boot.booted(){
         uint8_t i;
         for(i = 0 ; i < 12; i ++){
@@ -51,20 +53,24 @@ implementation{
             busy = FALSE;
             return;
         }
-        if(call AMSend.send(AM_BROADCAST_ADDR,sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
-            call Leds.led0Toggle();
+        call PacketAck.requestAck(sendQueue[send_point]); // require for ack
+        if(call AMSend.send(TOS_NODE_ID - 1,sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
             busy = FALSE;
         }
         else{
-            call Leds.led1Toggle();
             post radioSendTask();
         }
+    }
+
+    task void timerRestart () {
+        call Timer.stop();
+        call Timer.startPeriodic(frequence);
     }
 
     event void Timer.fired(){
         if(!full){
             my_radio_msg* send_pkt = (my_radio_msg*)(call Packet.getPayload(&sendMessage[receive_point], sizeof(my_radio_msg)));
-            counter ++;
+            counter += frequence;
             if(send_pkt == NULL){
                 return;
             }
@@ -73,11 +79,16 @@ implementation{
             call ReadTemperature.read();
             call ReadHumidity.read();
             call ReadIllumination.read();
-            send_pkt->collectTime = counter;
+            send_pkt->collectTime = call Timer.getNow();
             send_pkt->type = 0;
+            if(send_pkt->sequenceNumber == sequenceNumber - 1)
+                call Leds.led1Toggle();
             send_pkt->sequenceNumber = sequenceNumber;
             sequenceNumber ++;
             send_pkt->newTimerPeriod = 0;
+        }
+        else {
+            
         }
         if(!busy){
             post radioSendTask();
@@ -103,7 +114,6 @@ implementation{
                     full = TRUE;
                 }
             }
-            //call Leds.led0Toggle();
         }
     }
 
@@ -150,25 +160,31 @@ implementation{
         }
     }
 
-    event void AMSend.sendDone(message_t* msg, error_t err){
-    }
-
     event message_t* Receive.receive(message_t* msg,void* payload, uint8_t len){
         atomic{
             if(len == sizeof(my_radio_msg)){
                 my_radio_msg* node_pkt = (my_radio_msg*)(call Packet.getPayload(msg, sizeof(my_radio_msg)));
-                if(node_pkt->nodeId == TOS_NODE_ID){
-                    if(node_pkt->type == 1 && node_pkt->ack == 1){
-                        send_point ++;
-                        if(send_point >= 12){
-                            send_point = 0;
-                        }
-                        full = FALSE;
-                        call Leds.led1Toggle();
-                    }
+                if (node_pkt->type == 1) {
+                    frequence = node_pkt->newTimerPeriod;
+                    post timerRestart();
+                   
                 }
             }
         return msg;
         }
+    }
+
+    event void AMSend.sendDone(message_t* msg, error_t error){
+        if (call PacketAck.wasAcked(msg) && error == SUCCESS) {
+            send_point ++;
+            if(send_point >= 12){
+                send_point = 0;
+                full = FALSE;
+            }
+        } 
+        else {
+        }
+
+        post radioSendTask();
     }
 }
