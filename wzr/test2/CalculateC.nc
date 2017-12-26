@@ -16,6 +16,11 @@ module CalculateC{
 
 implementation{
     uint32_t number_storage[DATA_NUMBER] = {0xffffffff};
+    uint32_t max = 0;
+    uint32_t min = 0;
+    uint32_t sum = 0;
+    uint32_t average = 0;
+    uint32_t median = 0;
     uint16_t count = 0;
     //uint16_t send_point = 0;
     //uint16_t receive_point = 0;
@@ -52,8 +57,28 @@ implementation{
 
     }
 
-    void sort(){
-
+    void sort(uint32_t *number, int left, int right){
+        if(left >= right){
+            return;
+        }
+        int i = left;
+        int j = right;
+        uint32_t key = number[left];
+     
+        while(i < j){
+            while(i < j && key <= number[j]){
+                j--;
+            }
+            number[i] = number[j];
+            while(i < j && key >= number[i]){
+                i++;
+            }
+            number[j] = number[i];
+        }
+     
+        number[i] = key;
+        sort(number, left, i - 1);
+        sort(number, i + 1, right);
     }
 
     task void packageSend(){
@@ -68,8 +93,15 @@ implementation{
     }
 
     task void calculate(){
-        sort();
-        //calculate
+        sort(number_storage, 0, 1999);
+        max = number_storage[1999];
+        min = number_storage[0];
+        int i = 0;
+        for (i = 0; i < 2000; i++){
+            sum += number_storage[i];
+        }
+        average = sum / 2000;
+        median = (number_storage[999] + number_storage[1000]) / 2;
         status = STATUS_SEND;
         post packageSend();
         status = STATUS_END;
@@ -79,11 +111,15 @@ implementation{
 
     task void packageRequire(){
         if(TOS_NODE_ID == 1){
-            //to othernode
+            if (call AMSend.send(AM_BROADCAST_ADDR, &pkt, sizeof(data_require)) == SUCCESS){
+                busy = FALSE;
+            }
         }
         else{
-            //to mainnode
-        }//pkt
+            if (call AMSend.send(AM_BROADCAST_ADDR, &pkt, sizeof(data_package)) == SUCCESS){
+                busy = FALSE;
+            }
+        }
     }
 
     task void packageCheck(){
