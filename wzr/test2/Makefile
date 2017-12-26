@@ -1,0 +1,2 @@
+COMPONENT=CalculateP
+include $(MAKERULES)
