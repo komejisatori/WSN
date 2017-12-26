@@ -29,6 +29,7 @@ implementation{
     uint16_t send_point = 0;
     uint16_t read_check = 0; //if 3 every sensor complete
 
+    uint16_t last_sequency = 0;
     event void Boot.booted(){
         uint8_t i;
         for(i = 0 ; i < 12; i ++){
@@ -57,7 +58,6 @@ implementation{
             busy = FALSE;
         }
         else{
-            call Leds.led1Toggle();
             post radioSendTask();
         }
     }
@@ -79,11 +79,16 @@ implementation{
             call ReadTemperature.read();
             call ReadHumidity.read();
             call ReadIllumination.read();
-            send_pkt->collectTime = counter;
+            send_pkt->collectTime = call Timer.getNow();
             send_pkt->type = 0;
+            if(send_pkt->sequenceNumber == sequenceNumber - 1)
+                call Leds.led1Toggle();
             send_pkt->sequenceNumber = sequenceNumber;
             sequenceNumber ++;
             send_pkt->newTimerPeriod = 0;
+        }
+        else {
+            
         }
         if(!busy){
             post radioSendTask();
@@ -109,7 +114,6 @@ implementation{
                     full = TRUE;
                 }
             }
-            //call Leds.led0Toggle();
         }
     }
 
@@ -163,7 +167,7 @@ implementation{
                 if (node_pkt->type == 1) {
                     frequence = node_pkt->newTimerPeriod;
                     post timerRestart();
-                    call Leds.led2Toggle();
+                   
                 }
             }
         return msg;
@@ -172,7 +176,6 @@ implementation{
 
     event void AMSend.sendDone(message_t* msg, error_t error){
         if (call PacketAck.wasAcked(msg) && error == SUCCESS) {
-            call Leds.led0Toggle();
             send_point ++;
             if(send_point >= 12){
                 send_point = 0;
@@ -180,7 +183,6 @@ implementation{
             }
         } 
         else {
-            call Leds.led2Toggle();
         }
 
         post radioSendTask();

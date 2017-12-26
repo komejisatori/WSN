@@ -67,6 +67,9 @@ implementation{
                 busy = FALSE;
                 return;
             }
+            else if(full){
+                call Leds.led1Toggle();
+            }
             call PacketAck.requestAck(sendQueue[send_point]); // require for ack
             if(call PackSend.send(messageDest[send_point],sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
                 busy = FALSE;
@@ -90,8 +93,7 @@ implementation{
             send_pkt->illumination = collected_data.illumination;
             send_pkt->humidity = collected_data.humidity;
             send_pkt->type = collected_data.type;
-            send_pkt->sequenceNumber = sequenceNumber;
-            sequenceNumber ++;
+            send_pkt->sequenceNumber = collected_data.sequenceNumber;
 
             messageDest[receive_point] = TOS_NODE_ID - 1;
             receive_point ++;
@@ -110,31 +112,35 @@ implementation{
         if(!full){
             counter += frequence;
             collected_data.nodeId = TOS_NODE_ID;
-            collected_data.collectTime = counter;
+            collected_data.collectTime = call Timer1.getNow();
             collected_data.newTimerPeriod = 0;
             collected_data.type = 0;
+            collected_data.sequenceNumber = sequenceNumber;
+            sequenceNumber ++;
             call ReadTemperature.read();
             call ReadHumidity.read();
             call ReadIllumination.read();
+        }
+        else {
+            call Leds.led1Toggle();
         }
     }
 
     event void ReadTemperature.readDone(error_t result, uint16_t data){
         if (result == SUCCESS) {
-            collected_data.temperature = -40.1 + 0.01 * data;
+            collected_data.temperature = data;//-40.1 + 0.01 * data;
             read_check += 1;
             if(read_check == 3){
                 post collectedDataSendTask();
                 read_check = 0;
             }
-            //call Leds.led0Toggle();
         }
     }
 
     event void ReadHumidity.readDone(error_t result, uint16_t data){
         if (result == SUCCESS) {
-            collected_data.humidity = -4 + 4 * data / 100 + (-28 / 1000 / 10000) * (data * data);
-            collected_data.humidity += (collected_data.temperature - 25) * (1 / 100 + 8 * data / 100 / 1000);
+            collected_data.humidity = data;//-4 + 4 * data / 100 + (-28 / 1000 / 10000) * (data * data);
+            //collected_data.humidity += (collected_data.temperature - 25) * (1 / 100 + 8 * data / 100 / 1000);
             read_check += 1;
             if(read_check == 3){
                 post collectedDataSendTask();
@@ -164,10 +170,10 @@ implementation{
                 this_pkt->humidity = node_pkt->humidity;
                 this_pkt->illumination = node_pkt->illumination;
                 this_pkt->collectTime = node_pkt->collectTime;
-                this_pkt->sequenceNumber = sequenceNumber;
+               // this_pkt->collectTime = call Timer1.getNow();
                 if (node_pkt->type == 0) {
-                    sequenceNumber ++;
                     messageDest[receive_point] = TOS_NODE_ID - 1;
+                    this_pkt->sequenceNumber = node_pkt->sequenceNumber;
                 }
                 else {
                     messageDest[receive_point] = TOS_NODE_ID + 1;
@@ -183,7 +189,6 @@ implementation{
                 if(receive_point == send_point){
                     full = TRUE;
                 }
-                call Leds.led1Toggle();
                 if(!busy){
                     post radioSendTask();
                     busy = TRUE;
@@ -196,7 +201,6 @@ implementation{
 
     event void PackSend.sendDone(message_t* msg, error_t error){
         if (call PacketAck.wasAcked(msg) && error == SUCCESS) {
-            call Leds.led0Toggle();
             send_point ++;
             if(send_point >= 12){
                 send_point = 0;
@@ -204,7 +208,6 @@ implementation{
             }
         } 
         else {
-            call Leds.led2Toggle();
         }
 
         post radioSendTask();
