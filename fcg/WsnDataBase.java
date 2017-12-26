@@ -212,7 +212,7 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
         if (command.equals("start")) {
           file = new File("result.txt");
           try {  
-            file.createNewFile(); // 创建文件  
+            file.createNewFile(); // �����ļ�  
           } catch (IOException e) {  
             e.printStackTrace();  
           }
