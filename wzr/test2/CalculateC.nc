@@ -17,21 +17,18 @@ module CalculateC{
 implementation{
     uint32_t number_storage[DATA_NUMBER] = {0xffffffff};
     uint16_t count = 0;
-    uint16_t send_point = 0;
-    uint16_t receive_point = 0;
+    //uint16_t send_point = 0;
+    //uint16_t receive_point = 0;
     uint16_t check_point = 0;
     message_t pkt;
-    message_t send_message[12];
-    message_t* ONE_NOK send_queue[12];
+    //message_t send_message[12];
+    //message_t* ONE_NOK send_queue[12];
     bool busy = FALSE;
     bool full = FALSE;
     uint16_t status = STATUS_RECEIVE_TERMINAL;
     event void Boot.booted(){
         uint16_t i = 0;
         call AMControl.start();
-        for(i = 0 ; i < 12; i ++){
-            send_queue[i] = &send_message[i];
-        }
     }
 
     event void AMControl.startDone(error_t err){
@@ -52,12 +49,7 @@ implementation{
     }
 
     event void TerminalSender.sendDone(message_t* msg, error_t err){
-        if(err == SUCCESS){
-            send_point ++;
-            if(send_point == 12){
-                send_point = 0;
-            }
-        }
+
     }
 
     void sort(){
@@ -65,7 +57,14 @@ implementation{
     }
 
     task void packageSend(){
+        calculate_result* send_pkt = (calculate_result*)(call NodePacket.getPayload(&pkt,sizeof(calculate_result)));
 
+        if (call TerminalSender.send(AM_BROADCAST_ADDR, &pkt, sizeof(calculate_result)) == SUCCESS) {
+
+        }
+        else{
+            post packageSend();
+        }
     }
 
     task void calculate(){
@@ -94,10 +93,6 @@ implementation{
             check_point ++;
             if(number_storage[i] == 0xffffffff){
                 send_pkt->sequence_number = i;
-                receive_point ++;
-                if(receive_point == 12){
-                    receive_point = 0;
-                }
                 if(!busy){
                     post packageRequire();
                     busy = TRUE;
@@ -130,8 +125,11 @@ implementation{
             else if(len == sizeof(data_require)){
                 data_package* send_pkt = (data_package*)(call NodePacket.getPayload(&pkt,sizeof(data_require)));
                 data_require* btrpkt = (data_require*)payload;
-                //----------
-                post packageRequire();
+                send_pkt->sequence_number = btrpkt->sequence_number;
+                send_pkt->random_integer = number_storage[btrpkt->sequence_number - 1];
+                if(send_pkt->random_integer != 0xffffffff){
+                    post packageRequire();
+                }
             }
         }
     }
