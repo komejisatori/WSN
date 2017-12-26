@@ -1,5 +1,5 @@
-#some file and files to ignore
 build/
 *.class
 WsnDataBaseMsg.java
 result.txt
+Oscilloscope/
