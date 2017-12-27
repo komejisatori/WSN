@@ -82,7 +82,7 @@ implementation{
             send_pkt->collectTime = call Timer.getNow();
             send_pkt->type = 0;
             if(send_pkt->sequenceNumber == sequenceNumber - 1)
-                call Leds.led1Toggle();
+                call Leds.led2Toggle();
             send_pkt->sequenceNumber = sequenceNumber;
             sequenceNumber ++;
             send_pkt->newTimerPeriod = 0;
@@ -124,7 +124,7 @@ implementation{
                 return;
             }
             send_pkt->humidity = -4 + 4 * data / 100 + (-28 / 1000 / 10000) * (data * data);
-            send_pkt->humidity += (send_pkt->temperature - 25) * (1 / 100 + 8 * data / 100 / 1000);
+            // send_pkt->humidity += (send_pkt->temperature - 25) * (1 / 100 + 8 * data / 100 / 1000);
             read_check += 1;
             if(read_check == 3){
                 read_check = 0;
@@ -175,6 +175,7 @@ implementation{
     }
 
     event void AMSend.sendDone(message_t* msg, error_t error){
+        call Leds.led0Toggle();
         if (call PacketAck.wasAcked(msg) && error == SUCCESS) {
             send_point ++;
             if(send_point >= 12){
@@ -183,6 +184,7 @@ implementation{
             }
         } 
         else {
+            call Leds.led1Toggle();
         }
 
         post radioSendTask();

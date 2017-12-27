@@ -12,9 +12,13 @@ module CalculateC{
     uses interface AMSend as NodeSender;
     uses interface Receive as NodeReceiver;
     uses interface SplitControl as AMControl;
+    uses interface PacketAcknowledgements as TerminalAck;
+    uses interface PacketAcknowledgements as NodeAck;
 }
 
 implementation{
+    task void packageSend();
+    task void packageCheck();
     uint32_t number_storage[DATA_NUMBER] = {0xffffffff};
     uint32_t max = 0;
     uint32_t min = 0;
@@ -43,7 +47,7 @@ implementation{
 
     event void AMControl.startDone(error_t err){
         if(err == SUCCESS){
-            call Timer0.startPeriodic(TIMER_PERIOD_MILLI);
+            // call Timer0.startPeriodic(TIMER_PERIOD_MILLI);
         }
         else{
             call AMControl.start();
@@ -55,11 +59,20 @@ implementation{
     }
 
     event void NodeSender.sendDone(message_t* msg, error_t err){
-
+        if(status == STATUS_RECEIVE_NODE){
+            //post packageCheck();
+            //call Leds.led2Toggle();
+        }
     }
 
     event void TerminalSender.sendDone(message_t* msg, error_t err){
-
+        if (call TerminalAck.wasAcked(msg) && err == SUCCESS) {
+            status = STATUS_END;
+        }
+        else{
+        post packageSend();
+        //call Leds.led1Toggle();  
+        }
     }
 
     void sort(uint32_t *number, int left, int right){
@@ -96,8 +109,10 @@ implementation{
         send_pkt->average = average;
         send_pkt->sum = sum;
         send_pkt->median = median;
-        if (call TerminalSender.send(AM_BROADCAST_ADDR, &pkt, sizeof(calculate_result)) == SUCCESS) {
-            busy = FALSE;
+        send_pkt->group_id = 1;
+        call TerminalAck.requestAck(&pkt);
+        if (call TerminalSender.send(0, &pkt, sizeof(calculate_result)) == SUCCESS) {
+           
         }
         else{
             post packageSend();
@@ -115,17 +130,17 @@ implementation{
         }
         average = sum / 2000;
         median = (number_storage[999] + number_storage[1000]) / 2;
-        if(min == 0 && max == 1999 && sum == 1999000 && average == 999 && median == 999){
+        /*if(min == 0 && max == 1999 && sum == 1999000 && average == 999 && median == 999){
             call Leds.led1Off();
-            call Leds.led0Off();
             call Leds.led2Off();
+            call Leds.led0Off();
             call Timer0.startPeriodic(1000);
-        }
+        }*/
+        //call Timer0.startPeriodic(500);
+        call Timer0.startPeriodic(1000);
         status = STATUS_SEND;
-        if(!busy){
-            post packageSend();
-        }
-        //status = STATUS_END;
+        post packageSend();
+        
     }
 
 
@@ -134,7 +149,6 @@ implementation{
         if(TOS_NODE_ID == 1){
             if (call NodeSender.send(AM_BROADCAST_ADDR, &pkt, sizeof(data_require)) == SUCCESS){
                 call Leds.led2Toggle();
-                busy = FALSE;
             }
         }
     }
@@ -145,13 +159,9 @@ implementation{
         for(i = check_point; i < DATA_NUMBER; i ++){
             check_point ++;
             if(number_storage[i] == 0xffffffff){
-                //call Leds.led2Toggle();
                 correct = FALSE;
                 send_pkt->sequence_number = i + 1;
-                if(!busy){
-                    post packageRequire();
-                    busy = TRUE;
-                }
+                post packageRequire();
                 return;
             }
         }
@@ -177,6 +187,10 @@ implementation{
             call Leds.led2Toggle();
             call Leds.led1Toggle();
         }
+        if(status == STATUS_END){
+            call Leds.led0Toggle();
+            call Leds.led1Toggle();
+        }
     }
 
     event message_t* NodeReceiver.receive(message_t* msg, void* payload, uint8_t len){
@@ -184,7 +198,7 @@ implementation{
             if(len == sizeof(data_package)){
                 data_package* btrpkt = (data_package*)payload;
                 number_storage[btrpkt->sequence_number - 1] = btrpkt->random_integer;
-                call Leds.led0Toggle();
+                call Leds.led1Toggle();
             }
         }
         return msg;
@@ -196,7 +210,7 @@ implementation{
             if(btrpkt->sequence_number < last_sequence){
                 status = STATUS_RECEIVE_NODE;
                 call Timer0.startPeriodic(50);
-                call Leds.led1On();
+                call Leds.led0On();
             }
             number_storage[btrpkt->sequence_number - 1] = btrpkt->random_integer;
             last_sequence = btrpkt->sequence_number;

@@ -109,13 +109,13 @@ def receiveData():
 def writeToFile() :
     global WRITE_TO_FILE_FLAG
     output = open("result.txt", "w")
-    output.write("nodeId temperature humidity illumination collectTime sequenceNumber type newTimerPeriod\n")
+    output.write("nodeId sequenceNumber temperature humidity illumination collectTime\n")
     while WRITE_TO_FILE_FLAG:
         p = am.read()
         if p and p.type == AM_WSN_DATA_MSG:
             msg = OscilloscopeMsg(p.data)
-            msgList = [str(msg.nodeId), str(msg.temperature), str(msg.humidity), str(msg.illumination), 
-                        str(msg.collectTime), str(msg.sequenceNumber), str(msg.type), str(msg.newTimerPeriod)]
+            msgList = [str(msg.nodeId), str(msg.sequenceNumber), str(msg.temperature), str(msg.humidity), str(msg.illumination), 
+                        str(msg.collectTime)]
             writeStr = ' '.join(msgList)
             writeStr += '\n'
             output.write(writeStr)

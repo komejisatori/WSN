@@ -48,7 +48,7 @@ implementation{
 
     event void AMControl.startDone(error_t err){
         if(err == SUCCESS){
-            call Timer1.startPeriodic(frequence);
+           call Timer1.startPeriodic(frequence);
         }
     }
 
@@ -68,7 +68,7 @@ implementation{
                 return;
             }
             else if(full){
-                call Leds.led1Toggle();
+                call Leds.led2Toggle();
             }
             call PacketAck.requestAck(sendQueue[send_point]); // require for ack
             if(call PackSend.send(messageDest[send_point],sendQueue[send_point],sizeof(my_radio_msg)) == SUCCESS){
@@ -122,13 +122,13 @@ implementation{
             call ReadIllumination.read();
         }
         else {
-            call Leds.led1Toggle();
+            call Leds.led2Toggle();
         }
     }
 
     event void ReadTemperature.readDone(error_t result, uint16_t data){
         if (result == SUCCESS) {
-            collected_data.temperature = data;//-40.1 + 0.01 * data;
+            collected_data.temperature =  -40.1 + 0.01 * data;
             read_check += 1;
             if(read_check == 3){
                 post collectedDataSendTask();
@@ -139,7 +139,7 @@ implementation{
 
     event void ReadHumidity.readDone(error_t result, uint16_t data){
         if (result == SUCCESS) {
-            collected_data.humidity = data;//-4 + 4 * data / 100 + (-28 / 1000 / 10000) * (data * data);
+            collected_data.humidity = -4 + 4 * data / 100 + (-28 / 1000 / 10000) * (data * data);
             //collected_data.humidity += (collected_data.temperature - 25) * (1 / 100 + 8 * data / 100 / 1000);
             read_check += 1;
             if(read_check == 3){
@@ -200,6 +200,7 @@ implementation{
     }
 
     event void PackSend.sendDone(message_t* msg, error_t error){
+        call Leds.led0Toggle();
         if (call PacketAck.wasAcked(msg) && error == SUCCESS) {
             send_point ++;
             if(send_point >= 12){
@@ -208,6 +209,7 @@ implementation{
             }
         } 
         else {
+            call Leds.led1Toggle();
         }
 
         post radioSendTask();

@@ -9,8 +9,8 @@ implementation{
     components CalculateC as App;
     components new TimerMilliC() as Timer0;
     components ActiveMessageC;
-    components new AMSenderC(10) as TerminalSend;
-    components new AMReceiverC(10) as TerminalReceive;
+    components new AMSenderC(0) as TerminalSend;
+    components new AMReceiverC(0) as TerminalReceive;
     components new AMSenderC(AM_NODE_TO_NODE) as NodeSend;
     components new AMReceiverC(AM_NODE_TO_NODE) as NodeReceive;
     App.Boot -> MainC;
@@ -23,4 +23,6 @@ implementation{
     App.TerminalReceiver -> TerminalReceive;
     App.NodeSender -> NodeSend;
     App.NodeReceiver -> NodeReceive;
+    App.TerminalAck -> TerminalSend;
+    App.NodeAck->NodeSend;
 }

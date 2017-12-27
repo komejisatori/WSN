@@ -8,8 +8,8 @@ implementation{
     components LedsC;
     components CalculateC as App;
     components ActiveMessageC;
-    components new AMSenderC(10) as TerminalSend;
-    components new AMReceiverC(10) as TerminalReceive;
+    components new AMSenderC(0) as TerminalSend;
+    components new AMReceiverC(0) as TerminalReceive;
     components new AMSenderC(AM_NODE_TO_NODE) as NodeSend;
     components new AMReceiverC(AM_NODE_TO_NODE) as NodeReceive;
     App.Boot -> MainC;
