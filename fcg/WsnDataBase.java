@@ -45,8 +45,8 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
   File file;
   public FileOutputStream out;
   int systemStatus = 0;
-  int count = 0;
-
+  int count1 = 0;
+  int count2 = 0;
   public WsnDataBase(MoteIF moteIF) {
     this.moteIF = moteIF;
     this.moteIF.registerListener(new WsnDataBaseMsg(), this);
@@ -73,13 +73,25 @@ public class WsnDataBase extends JFrame implements MessageListener, ActionListen
     str += Integer.toString(msg.get_temperature()) + ' ';
     str += Integer.toString(msg.get_humidity()) + ' ';
     str += Integer.toString(msg.get_illumination()) + ' ';
-    str += Integer.toString(msg.get_collectTime()) + ' ';
-    str += Integer.toString(msg.get_sequenceNumber()) + '\n';
-    if((this.systemStatus == 1 && (msg.get_sequenceNumber() - count != 1)))
-    {
-      this.addStr("warning\n");
+    str += Integer.toString((int)msg.get_collectTime()) + ' ';
+    str += Integer.toString((int)msg.get_sequenceNumber()) + '\n';
+    if(this.systemStatus == 1){
+      if(msg.get_nodeId() == 2 && this.count1 != msg.get_sequenceNumber() - 1 && this.count1 != msg.get_sequenceNumber()){
+        this.addStr("node2 warning\n");
+      }
+      if(msg.get_nodeId() == 3 && this.count2 != msg.get_sequenceNumber() - 1 && this.count2 != msg.get_sequenceNumber()){
+        this.addStr("node3 warning\n");
+      }
     }
-    count = msg.get_sequenceNumber();
+    if(msg.get_nodeId() == 2)
+      this.count1 = msg.get_sequenceNumber();
+    if(msg.get_nodeId() == 3)
+      this.count2 = msg.get_sequenceNumber();
+    //if((this.systemStatus == 1 && (msg.get_sequenceNumber() - count != 1)))
+    //{
+    //  this.addStr("warning\n");
+    //}
+    //  count = msg.get_sequenceNumber();
     /*
     if (this.receiveFLag == true) {
       byte bt[];
